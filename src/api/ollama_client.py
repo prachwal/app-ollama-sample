@@ -158,3 +158,123 @@ def ask_ollama(
             with open(output_file, 'a', encoding='utf-8') as f:
                 f.write(f"\n{result_header}(Nieoczekiwany błąd)\n{error_msg}\n")
         return None
+
+
+def ask_ollama_stream(
+    model: str, 
+    prompt: str, 
+    token_callback,
+    test_name: str = "", 
+    output_file: Optional[str] = None, 
+    timeout: Optional[int] = None,
+    system_prompt: Optional[str] = None,
+    **model_options
+) -> Optional[Dict[str, Any]]:
+    """
+    Zadaje pytanie do modelu Ollama ze streamingiem dla GUI.
+    
+    Args:
+        model (str): Nazwa modelu do testowania
+        prompt (str): Tekst pytania
+        token_callback (callable): Funkcja wywoływana dla każdego tokenu (token_text)
+        test_name (str): Nazwa testu dla logowania
+        output_file (str): Ścieżka do pliku wyników
+        timeout (int): Timeout w sekundach
+        system_prompt (str): Opcjonalny prompt systemowy
+        **model_options: Dodatkowe opcje modelu (temperature, top_p, etc.)
+    
+    Returns:
+        Optional[Dict[str, Any]]: Słownik z wynikami lub None w przypadku błędu
+        {
+            'response': str,
+            'prompt_eval_count': int,
+            'eval_count': int,
+            'total_duration': int,
+            'first_token_time': float,
+            'total_time': float
+        }
+    """
+    url = f"{OLLAMA_API_URL}/api/generate"
+    
+    # Przygotuj payload z opcjami
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": True,
+        "options": model_options
+    }
+    
+    # Dodaj prompt systemowy jeśli podany
+    if system_prompt and system_prompt.strip():
+        payload["system"] = system_prompt
+    
+    current_timeout = timeout if timeout is not None else DEFAULT_TIMEOUT_PER_MODEL
+
+    try:
+        start_time = time.time()
+        response = requests.post(url, json=payload, stream=True, timeout=current_timeout)
+        response.raise_for_status()
+
+        first_token_time = None
+        full_response = ""
+        
+        for line in response.iter_lines():
+            if line:
+                try:
+                    data = json.loads(line.decode())
+                    if 'response' in data:
+                        token_text = data['response']
+                        if first_token_time is None:
+                            first_token_time = time.time()
+                        
+                        # Wywołaj callback dla każdego tokenu
+                        if token_callback:
+                            token_callback(token_text)
+                        
+                        full_response += token_text
+                    
+                    if data.get('done', False):
+                        end_time = time.time()
+                        total_time = end_time - start_time
+                        first_token_delay = first_token_time - start_time if first_token_time else 0
+                        
+                        # Zapisz do pliku jeśli podano
+                        if output_file:
+                            with open(output_file, 'a', encoding='utf-8') as f:
+                                f.write(full_response + "\n")
+                        
+                        return {
+                            'response': full_response,
+                            'prompt_eval_count': data.get('prompt_eval_count', 0),
+                            'eval_count': data.get('eval_count', 0),
+                            'total_duration': data.get('total_duration', 0),
+                            'first_token_time': first_token_delay,
+                            'total_time': total_time
+                        }
+                
+                except json.JSONDecodeError as e:
+                    print(f"Błąd parsowania JSON: {e}, linia: {line}")
+                    continue
+        
+        # Jeśli pętla się skończyła bez 'done'
+        return {
+            'response': full_response,
+            'error': 'Niekompletna odpowiedź'
+        }
+        
+    except requests.exceptions.Timeout:
+        error_msg = f"Timeout ({current_timeout}s) dla modelu {model}"
+        print(f"❌ {error_msg}")
+        return {'error': error_msg}
+    except requests.exceptions.ConnectionError:
+        error_msg = f"Błąd połączenia z Ollama na {OLLAMA_API_URL}"
+        print(f"❌ {error_msg}")
+        return {'error': error_msg}
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Błąd API: {e}"
+        print(f"❌ {error_msg}")
+        return {'error': error_msg}
+    except Exception as e:
+        error_msg = f"Niespodziewany błąd: {e}"
+        print(f"❌ {error_msg}")
+        return {'error': error_msg}

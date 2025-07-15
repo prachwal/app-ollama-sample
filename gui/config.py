@@ -34,6 +34,14 @@ WINDOW_CONFIG = {
     'theme': 'clam'
 }
 
+# Chat configuration
+CHAT_CONFIG = {
+    'enable_streaming': True,  # Włącza streaming odpowiedzi (tokeny na bieżąco)
+    'stream_delay': 0.01,      # Opóźnienie między tokenami (sekundy)
+    'auto_save_chat': True,    # Automatyczne zapisywanie czatu
+    'max_chat_history': 1000   # Maksymalna liczba wiadomości w historii
+}
+
 # Chat display tags
 CHAT_TAGS = {
     "user": {"foreground": "blue", "font": ('Consolas', 10, 'bold')},

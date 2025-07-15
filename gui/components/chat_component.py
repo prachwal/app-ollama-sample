@@ -8,7 +8,7 @@ from tkinter import ttk, scrolledtext, messagebox, filedialog
 import threading
 from datetime import datetime
 
-from ..config import CHAT_TAGS, SYSTEM_PROMPT_MODES
+from ..config import CHAT_TAGS, SYSTEM_PROMPT_MODES, CHAT_CONFIG
 
 
 class ChatComponent:
@@ -22,6 +22,9 @@ class ChatComponent:
         # Zmienne dla trybu systemowego
         self.system_prompt_mode = tk.StringVar(value="Standardowy")
         self.custom_system_prompt = ""
+        
+        # Zmienne dla ustawień czatu
+        self.enable_streaming = tk.BooleanVar(value=CHAT_CONFIG['enable_streaming'])
         
         self.setup_chat_tab()
     
@@ -82,6 +85,14 @@ class ChatComponent:
             command=self.clear_system_prompt
         )
         self.clear_prompt_btn.grid(row=0, column=3, padx=(5, 0))
+        
+        # Opcja streamingu
+        self.streaming_checkbox = ttk.Checkbutton(
+            system_frame,
+            text="📡 Streaming (odpowiedzi na bieżąco)",
+            variable=self.enable_streaming
+        )
+        self.streaming_checkbox.grid(row=1, column=0, columnspan=4, sticky=tk.W, pady=(5, 0))
     
     def setup_input_area(self, parent):
         """Tworzy obszar wprowadzania wiadomości"""
@@ -143,22 +154,46 @@ class ChatComponent:
                     f.write(f"[Ty]: {message}\n[{model}]: ")
                 
                 # Uzyskaj odpowiedź z promptem systemowym
-                from src.api import ask_ollama
                 system_prompt = self.get_current_system_prompt()
-                result = ask_ollama(
-                    model, 
-                    message, 
-                    "Czat GUI", 
-                    self.current_chat_file, 
-                    temperature=0.7,
-                    system_prompt=system_prompt
-                )
                 
-                if result and 'response' in result:
-                    response = result['response']
-                    self.parent.root.after(0, lambda: self.add_to_chat(response, "model"))
+                if self.enable_streaming.get():
+                    # Tryb streaming - tokeny na bieżąco
+                    def token_callback(token):
+                        self.parent.root.after(0, lambda t=token: self.append_to_last_message(t))
+                    
+                    from src.api import ask_ollama_stream
+                    result = ask_ollama_stream(
+                        model, 
+                        message,
+                        token_callback,
+                        "Czat GUI", 
+                        self.current_chat_file, 
+                        temperature=0.7,
+                        system_prompt=system_prompt
+                    )
+                    
+                    if result and 'response' in result:
+                        # Streaming już dodał tekst, więc tylko dodaj nową linię
+                        self.parent.root.after(0, lambda: self.finalize_stream_message())
+                    else:
+                        self.parent.root.after(0, lambda: self.add_to_chat("❌ Błąd podczas generowania odpowiedzi", "error"))
                 else:
-                    self.parent.root.after(0, lambda: self.add_to_chat("❌ Błąd podczas generowania odpowiedzi", "error"))
+                    # Tryb normalny - cała odpowiedź naraz
+                    from src.api import ask_ollama
+                    result = ask_ollama(
+                        model, 
+                        message, 
+                        "Czat GUI", 
+                        self.current_chat_file, 
+                        temperature=0.7,
+                        system_prompt=system_prompt
+                    )
+                    
+                    if result and 'response' in result:
+                        response = result['response']
+                        self.parent.root.after(0, lambda r=response: self.add_to_chat(r, "model"))
+                    else:
+                        self.parent.root.after(0, lambda: self.add_to_chat("❌ Błąd podczas generowania odpowiedzi", "error"))
                 
             except Exception as e:
                 self.parent.root.after(0, lambda: self.add_to_chat(f"❌ Błąd: {str(e)}", "error"))
@@ -173,6 +208,26 @@ class ChatComponent:
         """Dodaje tekst do obszaru czatu"""
         self.chat_display.config(state=tk.NORMAL)
         self.chat_display.insert(tk.END, text + "\n", tag)
+        self.chat_display.see(tk.END)
+        self.chat_display.config(state=tk.DISABLED)
+    
+    def append_to_last_message(self, text):
+        """Dołącza tekst do ostatniej wiadomości (dla streamingu)"""
+        self.chat_display.config(state=tk.NORMAL)
+        # Usuń ostatni znak nowej linii jeśli istnieje
+        current_pos = self.chat_display.index(tk.END)
+        last_char_pos = f"{current_pos.split('.')[0]}.{int(current_pos.split('.')[1]) - 1}"
+        if self.chat_display.get(last_char_pos) == '\n':
+            self.chat_display.delete(last_char_pos)
+        # Dodaj nowy tekst
+        self.chat_display.insert(tk.END, text)
+        self.chat_display.see(tk.END)
+        self.chat_display.config(state=tk.DISABLED)
+    
+    def finalize_stream_message(self):
+        """Finalizuje wiadomość po zakończeniu streamingu"""
+        self.chat_display.config(state=tk.NORMAL)
+        self.chat_display.insert(tk.END, "\n")
         self.chat_display.see(tk.END)
         self.chat_display.config(state=tk.DISABLED)
     
