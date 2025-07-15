@@ -28,7 +28,7 @@ GUI_STYLES = {
 
 # Window configuration
 WINDOW_CONFIG = {
-    'title': "Ollama Basic Chat GUI v2.2",
+    'title': "Ollama Basic Chat GUI v2.4 (+ AI Judge)",
     'width': 1200,
     'height': 800,
     'theme': 'clam'
@@ -69,6 +69,89 @@ TEST_CONFIG = {
         "Wyjaśnij różnicę między HTTP a HTTPS", 
         "Jak działa algorytm quicksort?"
     ]
+}
+
+# Judge configuration (AI evaluation)
+JUDGE_CONFIG = {
+    'enable_judge': True,
+    'default_provider': 'gemini',  # gemini, openai, claude
+    'providers': {
+        'gemini': {
+            'name': 'Google Gemini',
+            'api_key_env': 'GEMINI_API_KEY',
+            'models': ['gemini-1.5-flash', 'gemini-1.5-pro'],
+            'default_model': 'gemini-1.5-flash'
+        },
+        'openai': {
+            'name': 'OpenAI GPT',
+            'api_key_env': 'OPENAI_API_KEY', 
+            'models': ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'],
+            'default_model': 'gpt-4o-mini'
+        },
+        'claude': {
+            'name': 'Anthropic Claude',
+            'api_key_env': 'ANTHROPIC_API_KEY',
+            'models': ['claude-3-haiku-20240307', 'claude-3-sonnet-20240229'],
+            'default_model': 'claude-3-haiku-20240307'
+        }
+    }
+}
+
+# Predefined test sets with judge evaluation
+PREDEFINED_TESTS = {
+    'programowanie': {
+        'name': 'Testy Programowania',
+        'description': 'Zestaw testów oceniających umiejętności programistyczne',
+        'tests': [
+            {
+                'question': 'Napisz funkcję Python, która sprawdza czy liczba jest pierwsza',
+                'criteria': 'Kod powinien być poprawny, wydajny i zawierać obsługę błędów',
+                'expected_elements': ['def', 'for', 'if', 'return', 'range']
+            },
+            {
+                'question': 'Wyjaśnij różnicę między listą a tuple w Python',
+                'criteria': 'Odpowiedź powinna zawierać różnice w mutowności, wydajności i zastosowaniu',
+                'expected_elements': ['mutable', 'immutable', 'performance', 'memory']
+            },
+            {
+                'question': 'Jak działa algorytm quicksort? Podaj implementację',
+                'criteria': 'Opis algorytmu i poprawna implementacja z analizą złożoności',
+                'expected_elements': ['pivot', 'partition', 'O(n log n)', 'recursive']
+            }
+        ]
+    },
+    'matematyka': {
+        'name': 'Testy Matematyczne',
+        'description': 'Problemy matematyczne różnego poziomu',
+        'tests': [
+            {
+                'question': 'Rozwiąż równanie kwadratowe: x² - 5x + 6 = 0',
+                'criteria': 'Prawidłowe rozwiązanie z pokazaniem kroków',
+                'expected_elements': ['x=2', 'x=3', 'delta', 'wzór']
+            },
+            {
+                'question': 'Oblicz pochodną funkcji f(x) = x³ + 2x² - 5x + 1',
+                'criteria': 'Poprawna pochodna z zastosowaniem reguł różniczkowania',
+                'expected_elements': ['3x²', '4x', '-5', 'pochodna']
+            }
+        ]
+    },
+    'język': {
+        'name': 'Testy Językowe',
+        'description': 'Testy znajomości języka i gramatyki',
+        'tests': [
+            {
+                'question': 'Napisz esej o wpływie technologii na społeczeństwo (200 słów)',
+                'criteria': 'Spójność argumentacji, poprawność językowa, struktura',
+                'expected_elements': ['wprowadzenie', 'argumenty', 'przykłady', 'podsumowanie']
+            },
+            {
+                'question': 'Popraw błędy w zdaniu: "Ja poszedłem do sklepu i kupił chleb"',
+                'criteria': 'Identyfikacja i poprawka błędów gramatycznych',
+                'expected_elements': ['kupiłem', 'zgodność', 'osoba']
+            }
+        ]
+    }
 }
 
 # Font configuration

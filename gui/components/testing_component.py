@@ -10,7 +10,7 @@ import os
 import json
 from datetime import datetime
 
-from ..config import TEST_CONFIG
+from ..config import TEST_CONFIG, JUDGE_CONFIG, PREDEFINED_TESTS
 
 
 class TestingComponent:
@@ -27,6 +27,15 @@ class TestingComponent:
         self.temperature = tk.DoubleVar(value=0.1)
         self.num_iterations = tk.IntVar(value=3)
         
+        # Judge variables
+        self.enable_judge = tk.BooleanVar(value=JUDGE_CONFIG['enable_judge'])
+        self.judge_provider = tk.StringVar(value=JUDGE_CONFIG['default_provider'])
+        self.judge_model = tk.StringVar(value=JUDGE_CONFIG['providers'][JUDGE_CONFIG['default_provider']]['default_model'])
+        self.judge_api_key = tk.StringVar()
+        
+        # Predefined tests
+        self.selected_test_set = tk.StringVar(value=list(PREDEFINED_TESTS.keys())[0])
+        
         self.setup_test_tab()
     
     def setup_test_tab(self):
@@ -35,7 +44,7 @@ class TestingComponent:
         self.notebook.add(test_frame, text="🧪 Testy")
         
         test_frame.columnconfigure(0, weight=1)
-        test_frame.rowconfigure(3, weight=1)
+        test_frame.rowconfigure(5, weight=1)
         
         # Typ testu
         test_type_frame = ttk.LabelFrame(test_frame, text="Typ testu", padding="5")
@@ -49,7 +58,14 @@ class TestingComponent:
                        variable=self.test_type, value="KEYWORD").pack(anchor=tk.W)
         ttk.Radiobutton(test_type_frame, text="LENGTH - Test długości odpowiedzi", 
                        variable=self.test_type, value="LENGTH").pack(anchor=tk.W)
+        ttk.Radiobutton(test_type_frame, text="PREDEFINED - Predefiniowane testy z sędzią", 
+                       variable=self.test_type, value="PREDEFINED").pack(anchor=tk.W)
         
+        # Panel sędziego
+        self.setup_judge_panel(test_frame)
+        
+        # Panel predefiniowanych testów
+        self.setup_predefined_tests_panel(test_frame)
         # Parametry testu
         self.setup_test_parameters(test_frame)
         
@@ -59,10 +75,332 @@ class TestingComponent:
         # Wyniki testów
         self.setup_test_results(test_frame)
     
+    def setup_judge_panel(self, parent):
+        """Tworzy panel konfiguracji sędziego AI"""
+        judge_frame = ttk.LabelFrame(parent, text="🤖 Sędzia AI (Ocena odpowiedzi)", padding="5")
+        judge_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        judge_frame.columnconfigure(1, weight=1)
+        
+        # Checkbox włączenia sędziego
+        self.judge_checkbox = ttk.Checkbutton(
+            judge_frame,
+            text="Włącz sędziego AI",
+            variable=self.enable_judge,
+            command=self.on_judge_toggle
+        )
+        self.judge_checkbox.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        
+        # Dostawca
+        ttk.Label(judge_frame, text="Dostawca:").grid(row=1, column=0, sticky=tk.W, padx=(0, 5))
+        self.provider_combo = ttk.Combobox(
+            judge_frame,
+            textvariable=self.judge_provider,
+            values=list(JUDGE_CONFIG['providers'].keys()),
+            state="readonly",
+            width=15
+        )
+        self.provider_combo.grid(row=1, column=1, sticky=tk.W, padx=(0, 10))
+        self.provider_combo.bind('<<ComboboxSelected>>', self.on_provider_changed)
+        
+        # Model
+        ttk.Label(judge_frame, text="Model:").grid(row=1, column=2, sticky=tk.W, padx=(10, 5))
+        self.judge_model_combo = ttk.Combobox(
+            judge_frame,
+            textvariable=self.judge_model,
+            state="readonly",
+            width=20
+        )
+        self.judge_model_combo.grid(row=1, column=3, sticky=tk.W)
+        
+        # Klucz API
+        ttk.Label(judge_frame, text="Klucz API:").grid(row=2, column=0, sticky=tk.W, padx=(0, 5), pady=(5, 0))
+        self.api_key_entry = ttk.Entry(
+            judge_frame,
+            textvariable=self.judge_api_key,
+            show="*",
+            width=30
+        )
+        self.api_key_entry.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=(5, 0), padx=(0, 10))
+        
+        # Przyciski API
+        api_buttons_frame = ttk.Frame(judge_frame)
+        api_buttons_frame.grid(row=2, column=3, sticky=tk.W, pady=(5, 0))
+        
+        ttk.Button(api_buttons_frame, text="💾", command=self.save_api_key, width=3).pack(side=tk.LEFT)
+        ttk.Button(api_buttons_frame, text="📋", command=self.load_api_key, width=3).pack(side=tk.LEFT, padx=(2, 0))
+        ttk.Button(api_buttons_frame, text="🧪", command=self.test_api_key, width=3).pack(side=tk.LEFT, padx=(2, 0))
+        
+        # Status sędziego
+        self.judge_status_label = ttk.Label(judge_frame, text="Status: Nie skonfigurowany", foreground="gray")
+        self.judge_status_label.grid(row=3, column=0, columnspan=4, sticky=tk.W, pady=(5, 0))
+        
+        # Inicjalizacja
+        self.on_provider_changed()
+        self.on_judge_toggle()
+    
+    def setup_predefined_tests_panel(self, parent):
+        """Tworzy panel predefiniowanych testów"""
+        predefined_frame = ttk.LabelFrame(parent, text="📚 Predefiniowane Testy", padding="5")
+        predefined_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        predefined_frame.columnconfigure(1, weight=1)
+        
+        # Wybór zestawu testów
+        ttk.Label(predefined_frame, text="Zestaw:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+        self.test_set_combo = ttk.Combobox(
+            predefined_frame,
+            textvariable=self.selected_test_set,
+            values=list(PREDEFINED_TESTS.keys()),
+            state="readonly",
+            width=20
+        )
+        self.test_set_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.test_set_combo.bind('<<ComboboxSelected>>', self.on_test_set_changed)
+        
+        # Opis zestawu
+        self.test_set_description = ttk.Label(
+            predefined_frame,
+            text="",
+            wraplength=400,
+            foreground="blue"
+        )
+        self.test_set_description.grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
+        
+        # Przycisk uruchomienia
+        ttk.Button(
+            predefined_frame,
+            text="🚀 Uruchom Zestaw Testów",
+            command=self.run_predefined_tests
+        ).grid(row=0, column=2, padx=(10, 0))
+        
+        # Inicjalizacja opisu
+        self.on_test_set_changed()
+    
+    def on_judge_toggle(self):
+        """Obsługuje włączanie/wyłączanie sędziego"""
+        enabled = self.enable_judge.get()
+        
+        # Włącz/wyłącz kontrolki
+        state = "normal" if enabled else "disabled"
+        self.provider_combo.configure(state="readonly" if enabled else "disabled")
+        self.judge_model_combo.configure(state="readonly" if enabled else "disabled")
+        self.api_key_entry.configure(state=state)
+        
+        if enabled:
+            self.judge_status_label.configure(text="Status: Włączony - skonfiguruj klucz API", foreground="orange")
+        else:
+            self.judge_status_label.configure(text="Status: Wyłączony", foreground="gray")
+    
+    def on_provider_changed(self, event=None):
+        """Obsługuje zmianę dostawcy sędziego"""
+        provider = self.judge_provider.get()
+        if provider in JUDGE_CONFIG['providers']:
+            models = JUDGE_CONFIG['providers'][provider]['models']
+            self.judge_model_combo.configure(values=models)
+            self.judge_model.set(JUDGE_CONFIG['providers'][provider]['default_model'])
+            
+            # Załaduj klucz z ENV jeśli dostępny
+            env_key = JUDGE_CONFIG['providers'][provider]['api_key_env']
+            import os
+            api_key = os.getenv(env_key, "")
+            if api_key:
+                self.judge_api_key.set(api_key)
+                self.judge_status_label.configure(text="Status: Klucz załadowany z ENV", foreground="green")
+    
+    def on_test_set_changed(self, event=None):
+        """Obsługuje zmianę zestawu testów"""
+        test_set = self.selected_test_set.get()
+        if test_set in PREDEFINED_TESTS:
+            description = PREDEFINED_TESTS[test_set]['description']
+            test_count = len(PREDEFINED_TESTS[test_set]['tests'])
+            full_desc = f"{description} ({test_count} testów)"
+            self.test_set_description.configure(text=full_desc)
+    
+    def save_api_key(self):
+        """Zapisuje klucz API do zmiennej środowiskowej lub pliku"""
+        api_key = self.judge_api_key.get().strip()
+        if not api_key:
+            messagebox.showerror("Błąd", "Wprowadź klucz API!")
+            return
+        
+        provider = self.judge_provider.get()
+        env_key = JUDGE_CONFIG['providers'][provider]['api_key_env']
+        
+        # W rzeczywistej implementacji można zapisać do .env
+        messagebox.showinfo("Info", f"Klucz API dla {provider} został zapisany do pamięci.\n"
+                                  f"Aby zachować między sesjami, ustaw zmienną środowiskową: {env_key}")
+        
+        self.judge_status_label.configure(text="Status: Klucz API zapisany", foreground="green")
+    
+    def load_api_key(self):
+        """Wczytuje klucz API ze zmiennych środowiskowych"""
+        provider = self.judge_provider.get()
+        env_key = JUDGE_CONFIG['providers'][provider]['api_key_env']
+        
+        import os
+        api_key = os.getenv(env_key, "")
+        if api_key:
+            self.judge_api_key.set(api_key)
+            self.judge_status_label.configure(text="Status: Klucz załadowany z ENV", foreground="green")
+            messagebox.showinfo("Sukces", f"Klucz API załadowany z {env_key}")
+        else:
+            messagebox.showwarning("Ostrzeżenie", f"Brak zmiennej środowiskowej {env_key}")
+    
+    def test_api_key(self):
+        """Testuje klucz API"""
+        api_key = self.judge_api_key.get().strip()
+        if not api_key:
+            messagebox.showerror("Błąd", "Wprowadź klucz API!")
+            return
+        
+        provider = self.judge_provider.get()
+        model = self.judge_model.get()
+        
+        self.judge_status_label.configure(text="Status: Testowanie klucza...", foreground="orange")
+        
+        def test_in_thread():
+            try:
+                if provider == "gemini":
+                    from src.api import judge_with_gemini
+                    score, response = judge_with_gemini(
+                        "Test response", 
+                        "Test prompt for API validation", 
+                        api_key
+                    )
+                    
+                    self.parent.root.after(0, lambda: 
+                        self.judge_status_label.configure(
+                            text=f"Status: ✅ Klucz API działa ({provider}:{model})", 
+                            foreground="green"
+                        )
+                    )
+                    self.parent.root.after(0, lambda: 
+                        messagebox.showinfo("Sukces", f"Test klucza API pomyślny!\nOcena testowa: {score}/10")
+                    )
+                else:
+                    # Dla innych dostawców (OpenAI, Claude) - placeholder
+                    self.parent.root.after(0, lambda: 
+                        self.judge_status_label.configure(
+                            text=f"Status: {provider} - test nie zaimplementowany", 
+                            foreground="orange"
+                        )
+                    )
+                    self.parent.root.after(0, lambda: 
+                        messagebox.showinfo("Info", f"Test dla {provider} nie jest jeszcze zaimplementowany")
+                    )
+                    
+            except Exception as e:
+                self.parent.root.after(0, lambda: 
+                    self.judge_status_label.configure(
+                        text="Status: ❌ Błąd klucza API", 
+                        foreground="red"
+                    )
+                )
+                self.parent.root.after(0, lambda e=e: 
+                    messagebox.showerror("Błąd", f"Test klucza API nieudany:\n{str(e)}")
+                )
+        
+        threading.Thread(target=test_in_thread, daemon=True).start()
+    
+    def run_predefined_tests(self):
+        """Uruchamia predefiniowane testy"""
+        if not self.parent.selected_model.get():
+            messagebox.showerror("Błąd", "Wybierz model Ollama przed uruchomieniem testów!")
+            return
+        
+        test_set_key = self.selected_test_set.get()
+        test_set = PREDEFINED_TESTS[test_set_key]
+        
+        self.add_to_results(f"🚀 URUCHAMIANIE ZESTAWU: {test_set['name']}", "header")
+        self.add_to_results(f"Opis: {test_set['description']}", "info")
+        
+        if self.enable_judge.get():
+            judge_info = f"Sędzia: {self.judge_provider.get()}:{self.judge_model.get()}"
+            self.add_to_results(judge_info, "info")
+        
+        self.add_to_results("=" * 60, "header")
+        
+        # Uruchom testy w wątku
+        def run_tests_thread():
+            model = self.parent.selected_model.get()
+            
+            for i, test in enumerate(test_set['tests'], 1):
+                self.parent.root.after(0, lambda i=i, total=len(test_set['tests']): 
+                    self.parent.progress_var.set(f"Test {i}/{total}...")
+                )
+                self.parent.root.after(0, lambda: self.parent.progress_bar.start())
+                
+                question = test['question']
+                criteria = test['criteria']
+                
+                self.parent.root.after(0, lambda q=question, i=i: 
+                    self.add_to_results(f"\n📋 TEST {i}: {q}", "info")
+                )
+                
+                try:
+                    # Wykonaj test na modelu
+                    from src.api import ask_ollama
+                    result = ask_ollama(model, question, f"PredefinedTest_{i}")
+                    
+                    if result and 'response' in result:
+                        response = result['response']
+                        self.parent.root.after(0, lambda r=response: 
+                            self.add_to_results(f"📝 Odpowiedź: {r[:200]}{'...' if len(r) > 200 else ''}", None)
+                        )
+                        
+                        # Oceń odpowiedź sędzią (jeśli włączony)
+                        if self.enable_judge.get():
+                            api_key = self.judge_api_key.get().strip()
+                            if api_key:
+                                self.parent.root.after(0, lambda: 
+                                    self.add_to_results("🤖 Ocenianie przez sędziego...", "info")
+                                )
+                                
+                                try:
+                                    from src.api import judge_with_gemini
+                                    judge_prompt = f"Oceń następującą odpowiedź:\n\nPytanie: {question}\nKryteria: {criteria}\nOdpowiedź: {response}\n\nOceń odpowiedź w skali 1-10 i uzasadnij ocenę."
+                                    
+                                    score, judge_response = judge_with_gemini(response, judge_prompt, api_key)
+                                    
+                                    self.parent.root.after(0, lambda s=score, jr=judge_response: 
+                                        self.add_to_results(f"⭐ Ocena sędziego: {s}/10", "success" if s >= 7 else "warning")
+                                    )
+                                    self.parent.root.after(0, lambda jr=judge_response: 
+                                        self.add_to_results(f"💬 Uzasadnienie: {jr[:300]}{'...' if len(jr) > 300 else ''}", None)
+                                    )
+                                except Exception as e:
+                                    self.parent.root.after(0, lambda e=e: 
+                                        self.add_to_results(f"❌ Błąd sędziego: {str(e)}", "error")
+                                    )
+                            else:
+                                self.parent.root.after(0, lambda: 
+                                    self.add_to_results("⚠️ Brak klucza API sędziego", "warning")
+                                )
+                        
+                        self.parent.root.after(0, lambda: 
+                            self.add_to_results("✅ Test zakończony", "success")
+                        )
+                    else:
+                        self.parent.root.after(0, lambda: 
+                            self.add_to_results("❌ Błąd wykonania testu", "error")
+                        )
+                        
+                except Exception as e:
+                    self.parent.root.after(0, lambda e=e: 
+                        self.add_to_results(f"❌ Błąd: {str(e)}", "error")
+                    )
+            
+            self.parent.root.after(0, lambda: self.parent.progress_bar.stop())
+            self.parent.root.after(0, lambda: self.parent.progress_var.set("Gotowy"))
+            self.parent.root.after(0, lambda: 
+                self.add_to_results(f"\n🏁 ZESTAW ZAKOŃCZONY: {test_set['name']}", "header")
+            )
+        
+        threading.Thread(target=run_tests_thread, daemon=True).start()
+    
     def setup_test_parameters(self, parent):
         """Tworzy panel parametrów testu"""
         params_frame = ttk.LabelFrame(parent, text="Parametry testu", padding="5")
-        params_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        params_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         params_frame.columnconfigure(1, weight=1)
         
         # Temperatura
@@ -93,7 +431,7 @@ class TestingComponent:
     def setup_test_buttons(self, parent):
         """Tworzy przyciski akcji"""
         buttons_frame = ttk.Frame(parent)
-        buttons_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        buttons_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
         ttk.Button(buttons_frame, text="🏃 Uruchom Test Szybki", 
                   command=self.run_quick_test).pack(side=tk.LEFT, padx=(0, 5))
@@ -107,7 +445,7 @@ class TestingComponent:
     def setup_test_results(self, parent):
         """Tworzy obszar wyników testów"""
         results_frame = ttk.LabelFrame(parent, text="Wyniki testów", padding="5")
-        results_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        results_frame.grid(row=5, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         results_frame.columnconfigure(0, weight=1)
         results_frame.rowconfigure(0, weight=1)
         
