@@ -1,0 +1,6 @@
+name,size_bytes,size_gb,modified_at,digest,family,parameter_size,quantization,format,architecture,context_length,embedding_length,layers_count,attention_heads,parameter_count,tokenizer_type,vocab_size,bos_token_id,eos_token_id,capabilities,tensor_count,weight_types,total_parameters
+qwen2.5-coder:1.5b,986062089,0.92,2025-07-14T23:31:29.386838+02:00,d7372fd82851,qwen2,1.5B,Q4_K_M,gguf,qwen2,32768,1536,28,12,1543714304,gpt2,N/A,151643,151645,"completion, tools, insert",338,"Q6_K, Q4_K, F32",1543714304
+qwen3:1.7b,1359293444,1.27,2025-07-14T23:21:29.1606357+02:00,8f68893c685c,qwen3,2.0B,Q4_K_M,gguf,qwen3,40960,2048,28,16,2031739904,gpt2,N/A,151643,151645,"completion, tools, thinking",311,"F16, Q6_K, Q4_K, F32",2031739904
+qwen2.5:1.5b,986061892,0.92,2025-07-14T23:19:29.0577991+02:00,65ec06548149,qwen2,1.5B,Q4_K_M,gguf,qwen2,32768,1536,28,12,1543714304,gpt2,N/A,151643,151645,"completion, tools",338,"Q6_K, Q4_K, F32",1543714304
+llama3.2:3b,2019393189,1.88,2025-07-14T22:01:31.4833733+02:00,a80c4f17acd5,llama,3.2B,Q4_K_M,gguf,llama,131072,3072,28,24,3212749888,gpt2,N/A,128000,128009,"completion, tools",255,"Q6_K, Q4_K, F32",3212749888
+gemma2:2b,1629518495,1.52,2025-07-14T21:46:49.2030842+02:00,8ccf136fdd52,gemma2,2.6B,Q4_0,gguf,gemma2,8192,2304,26,8,2614341888,llama,N/A,2,1,completion,288,"Q4_0, Q6_K, F32",2614341888
