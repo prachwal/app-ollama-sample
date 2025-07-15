@@ -10,6 +10,13 @@ from .helpers import (
     create_file_header
 )
 from .test_prompts import get_comprehensive_test_prompts, get_quick_test_prompts
+from .multilingual_prompts import (
+    get_comprehensive_test_prompts_english,
+    get_quick_test_prompts_english,
+    get_test_prompts_by_language,
+    get_available_languages,
+    get_language_display_name
+)
 from .analysis import generate_summary
 
 __all__ = [
@@ -22,5 +29,10 @@ __all__ = [
     'create_file_header',
     'get_comprehensive_test_prompts', 
     'get_quick_test_prompts',
+    'get_comprehensive_test_prompts_english',
+    'get_quick_test_prompts_english',
+    'get_test_prompts_by_language',
+    'get_available_languages',
+    'get_language_display_name',
     'generate_summary'
 ]

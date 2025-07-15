@@ -1,10 +1,15 @@
-# Ollama LLM Testing Suite v2.0
+# Ollama LLM Testing Suite v2.2
 
-Ujednolicony framework do testowania modeli LLM z oceną AI sędziego.
+Ujednolicony framework do testowania modeli LLM z oceną AI sędziego i wielojęzyczną obsługą.
 
-## 🏗️ Nowa Architektura Modułowa
+## 🏗️ Najnowsza Architektura Modułowa (v2.2)
 
-Projekt został przeprowadzony przez kompletną refaktoryzację, eliminującą duplikację kodu i wprowadzającą czytelną strukturę modułową.
+Projekt przeszedł przez kompletną refaktoryzację, wprowadzając:
+- ✅ **Uspójniony interfejs GUI** - usunięto duplikaty przycisków
+- ✅ **Wielojęzyczną obsługę** - Polski/English w GUI i CLI  
+- ✅ **Modułową architekturę** - eliminacja duplikacji kodu
+- ✅ **Automatyzację czyszczenia** - PowerShell i Batch scripts
+- ✅ **Comprehensive .gitignore** - dla projektów Python
 
 ### 📁 Struktura Projektu
 

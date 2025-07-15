@@ -4,13 +4,45 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-    
         {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Launch Ollama GUI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/ollama_basic_chat_gui.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Launch Ollama CLI",
+            "type": "debugpy", 
+            "request": "launch",
+            "program": "${workspaceFolder}/ollama_multilingual_cli.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Run Test Exporter",
+            "type": "debugpy",
+            "request": "launch", 
+            "program": "${workspaceFolder}/test_exporter.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
         }
     ]
 }
