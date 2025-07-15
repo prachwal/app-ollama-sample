@@ -99,6 +99,7 @@ app-ollama-sample/
 
 **Funkcjonalności:**
 - ✅ **Zakładki** dla różnych funkcji (Chat/Testy)
+- ✅ **🆕 Tryby systemowe** - 9 predefiniowanych persona + własne prompty
 - ✅ **Wybór języka testów** (Polski/English dropdown)
 - ✅ **Interaktywny chat** z wybranymi modelami
 - ✅ **Testy szybkie i kompletne** z paskiem postępu

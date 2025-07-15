@@ -38,7 +38,7 @@ from src.config import DEFAULT_SLEEP_BETWEEN_MODELS
 class OllamaGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Ollama Basic Chat GUI v2.1")
+        self.root.title("Ollama Basic Chat GUI v2.2")
         self.root.geometry("1200x800")
         
         # Zmienne
@@ -48,6 +48,22 @@ class OllamaGUI:
         self.selected_language_code = "polish"  # Kod języka używany przez funkcje
         self.use_judge = tk.BooleanVar(value=True)  # Opcja sędziego LLM
         self.gemini_api_key = self.load_gemini_api_key()  # Klucz API Gemini z ENV lub pusty
+        self.system_prompt_mode = tk.StringVar(value="Standardowy")  # Tryb systemowy dla promptów
+        
+        # Predefiniowane tryby systemowe (persona)
+        self.system_prompt_modes = {
+            "Standardowy": "",
+            "Profesjonalny programista": "Jesteś profesjonalnym programistą z wieloletnim doświadczeniem. Odpowiadaj precyzyjnie, podawaj przykłady kodu i najlepsze praktyki. Wyjaśniaj złożone koncepty w przystępny sposób.",
+            "Asystent naukowy": "Jesteś asystentem naukowym o szerokich kompetencjach. Odpowiadaj obiektywnie, posiłkuj się faktami i badaniami. Wyjaśniaj złożone tematy krok po kroku.",
+            "Kreatywny pisarz": "Jesteś kreatywnym pisarzem i storytellerem. Używaj żywego języka, metafor i obrazowych opisów. Pobudź wyobraźnię i stwórz angażujące narracje.",
+            "Analityk biznesowy": "Jesteś doświadczonym analitykiem biznesowym. Myśl strategicznie, analizuj problemy z perspektywy biznesowej i proponuj praktyczne rozwiązania.",
+            "Nauczyciel": "Jesteś cierpliwym i doświadczonym nauczycielem. Wyjaśniaj zagadnienia krok po kroku, używaj prostego języka i podawaj przykłady. Zadawaj pytania kontrolne.",
+            "Ekspert IT": "Jesteś ekspertem IT z szeroką wiedzą techniczną. Doradzaj w kwestiach architektury, bezpieczeństwa i najlepszych praktyk. Myśl o skalowalności i wydajności.",
+            "Konsultant prawny": "Jesteś konsultantem prawnym. Analizuj kwestie z perspektywy prawnej, wskazuj potencjalne ryzyka i proponuj zgodne z prawem rozwiązania. Zawsze zaznaczaj potrzebę weryfikacji przez prawnika.",
+            "Psycholog": "Jesteś empatycznym psychologiem. Słuchaj uważnie, zadawaj przemyślane pytania i oferuj wsparcie. Zachowaj profesjonalny dystans i nie diagnozuj.",
+            "Własny prompt": "CUSTOM"  # Specjalna wartość dla własnego prompta
+        }
+        self.custom_system_prompt = ""  # Własny prompt użytkownika
         self.current_chat_file = None
         self.is_testing = False
         self.stop_testing = False  # Flaga do zatrzymywania testów
@@ -228,9 +244,40 @@ class OllamaGUI:
         self.chat_display.tag_configure("system", foreground="gray", font=('Consolas', 9, 'italic'))
         self.chat_display.tag_configure("error", foreground="red")
         
+        # Panel trybu systemowego
+        system_frame = ttk.LabelFrame(chat_frame, text="🎭 Tryb systemowy (Persona)", padding="5")
+        system_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        system_frame.columnconfigure(1, weight=1)
+        
+        ttk.Label(system_frame, text="Tryb:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+        
+        self.system_mode_combo = ttk.Combobox(
+            system_frame, 
+            textvariable=self.system_prompt_mode,
+            values=list(self.system_prompt_modes.keys()),
+            state="readonly",
+            width=25
+        )
+        self.system_mode_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 5))
+        self.system_mode_combo.bind('<<ComboboxSelected>>', self.on_system_mode_changed)
+        
+        self.edit_prompt_btn = ttk.Button(
+            system_frame, 
+            text="📝 Edytuj", 
+            command=self.edit_system_prompt
+        )
+        self.edit_prompt_btn.grid(row=0, column=2, padx=(5, 0))
+        
+        self.clear_prompt_btn = ttk.Button(
+            system_frame, 
+            text="🗑️ Reset", 
+            command=self.clear_system_prompt
+        )
+        self.clear_prompt_btn.grid(row=0, column=3, padx=(5, 0))
+        
         # Pole wprowadzania
         input_frame = ttk.Frame(chat_frame)
-        input_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E))
+        input_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E))
         input_frame.columnconfigure(0, weight=1)
         
         self.message_entry = tk.Text(input_frame, height=3, width=60, wrap=tk.WORD,
@@ -569,8 +616,16 @@ class OllamaGUI:
                 with open(self.current_chat_file, 'a', encoding='utf-8') as f:
                     f.write(f"[Ty]: {message}\n[{model}]: ")
                 
-                # Uzyskaj odpowiedź
-                result = ask_ollama(model, message, "Czat GUI", self.current_chat_file, temperature=0.7)
+                # Uzyskaj odpowiedź z promptem systemowym
+                system_prompt = self.get_current_system_prompt()
+                result = ask_ollama(
+                    model, 
+                    message, 
+                    "Czat GUI", 
+                    self.current_chat_file, 
+                    temperature=0.7,
+                    system_prompt=system_prompt
+                )
                 
                 if result and 'response' in result:
                     response = result['response']
@@ -644,6 +699,155 @@ class OllamaGUI:
                 messagebox.showinfo("Sukces", f"Czat wczytany z: {filename}")
             except Exception as e:
                 messagebox.showerror("Błąd", f"Nie można wczytać pliku: {str(e)}")
+    
+    def on_system_mode_changed(self, event=None):
+        """Obsługuje zmianę trybu systemowego"""
+        selected_mode = self.system_prompt_mode.get()
+        
+        if selected_mode == "Własny prompt":
+            # Jeśli wybrano własny prompt, otwórz dialog edycji
+            self.edit_system_prompt()
+        else:
+            # Wyświetl informację o wybranym trybie
+            if selected_mode != "Standardowy":
+                prompt_text = self.system_prompt_modes[selected_mode]
+                self.add_to_chat(f"🎭 Ustawiono tryb: {selected_mode}", "system")
+                self.add_to_chat(f"💭 Prompt systemowy: {prompt_text[:100]}...", "system")
+            else:
+                self.add_to_chat("🎭 Tryb standardowy (bez promptu systemowego)", "system")
+    
+    def edit_system_prompt(self):
+        """Dialog do edycji własnego promptu systemowego"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Edycja trybu systemowego")
+        dialog.geometry("700x500")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Wycentruj dialog
+        dialog.geometry("+%d+%d" % (
+            self.root.winfo_rootx() + 50,
+            self.root.winfo_rooty() + 50
+        ))
+        
+        ttk.Label(dialog, text="🎭 Edycja trybu systemowego (Persona)", 
+                 font=('Arial', 12, 'bold')).pack(pady=15)
+        
+        # Combo box z trybami
+        mode_frame = ttk.Frame(dialog)
+        mode_frame.pack(fill=tk.X, padx=20, pady=10)
+        
+        ttk.Label(mode_frame, text="Predefiniowany tryb:").pack(anchor=tk.W)
+        
+        temp_mode_var = tk.StringVar(value=self.system_prompt_mode.get())
+        mode_combo = ttk.Combobox(
+            mode_frame, 
+            textvariable=temp_mode_var,
+            values=list(self.system_prompt_modes.keys()),
+            state="readonly"
+        )
+        mode_combo.pack(fill=tk.X, pady=(5, 0))
+        
+        # Obszar edycji prompta
+        ttk.Label(dialog, text="Prompt systemowy:", 
+                 font=('Arial', 10, 'bold')).pack(anchor=tk.W, padx=20, pady=(20, 5))
+        
+        text_frame = ttk.Frame(dialog)
+        text_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        
+        prompt_text = scrolledtext.ScrolledText(
+            text_frame, 
+            height=12, 
+            wrap=tk.WORD, 
+            font=('Arial', 10)
+        )
+        prompt_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Załaduj obecny prompt
+        current_mode = self.system_prompt_mode.get()
+        if current_mode == "Własny prompt":
+            prompt_text.insert("1.0", self.custom_system_prompt)
+        elif current_mode in self.system_prompt_modes:
+            current_prompt = self.system_prompt_modes[current_mode]
+            if current_prompt != "CUSTOM":
+                prompt_text.insert("1.0", current_prompt)
+        
+        def on_mode_combo_changed(event=None):
+            """Aktualizuje tekst prompta gdy zmieni się tryb"""
+            selected = temp_mode_var.get()
+            if selected in self.system_prompt_modes:
+                prompt_value = self.system_prompt_modes[selected]
+                if prompt_value == "CUSTOM":
+                    prompt_text.delete("1.0", tk.END)
+                    prompt_text.insert("1.0", self.custom_system_prompt)
+                elif prompt_value:
+                    prompt_text.delete("1.0", tk.END)
+                    prompt_text.insert("1.0", prompt_value)
+                else:  # Standardowy
+                    prompt_text.delete("1.0", tk.END)
+        
+        mode_combo.bind('<<ComboboxSelected>>', on_mode_combo_changed)
+        
+        # Przyciski
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(pady=20)
+        
+        def save_prompt():
+            new_mode = temp_mode_var.get()
+            new_prompt = prompt_text.get("1.0", tk.END).strip()
+            
+            if new_mode == "Własny prompt":
+                self.custom_system_prompt = new_prompt
+                self.system_prompt_mode.set("Własny prompt")
+                self.add_to_chat("🎭 Ustawiono własny tryb systemowy", "system")
+                if new_prompt:
+                    self.add_to_chat(f"💭 Prompt: {new_prompt[:100]}...", "system")
+            else:
+                self.system_prompt_mode.set(new_mode)
+                if new_mode == "Standardowy":
+                    self.add_to_chat("🎭 Przywrócono tryb standardowy", "system")
+                else:
+                    self.add_to_chat(f"🎭 Ustawiono tryb: {new_mode}", "system")
+            
+            dialog.destroy()
+        
+        def preview_prompt():
+            """Podgląd aktualnego prompta"""
+            current_prompt = prompt_text.get("1.0", tk.END).strip()
+            if current_prompt:
+                messagebox.showinfo("Podgląd prompta", f"Aktualny prompt systemowy:\n\n{current_prompt}")
+            else:
+                messagebox.showinfo("Podgląd prompta", "Brak prompta systemowego (tryb standardowy)")
+        
+        ttk.Button(button_frame, text="💾 Zapisz", 
+                  command=save_prompt).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="👁️ Podgląd", 
+                  command=preview_prompt).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="❌ Anuluj", 
+                  command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+        
+        # Focus na text area
+        prompt_text.focus()
+    
+    def clear_system_prompt(self):
+        """Resetuje tryb systemowy do standardowego"""
+        self.system_prompt_mode.set("Standardowy")
+        self.custom_system_prompt = ""
+        self.add_to_chat("🎭 Zresetowano do trybu standardowego", "system")
+    
+    def get_current_system_prompt(self):
+        """Zwraca aktualny prompt systemowy"""
+        current_mode = self.system_prompt_mode.get()
+        
+        if current_mode == "Standardowy":
+            return ""
+        elif current_mode == "Własny prompt":
+            return self.custom_system_prompt
+        elif current_mode in self.system_prompt_modes:
+            prompt = self.system_prompt_modes[current_mode]
+            return prompt if prompt != "CUSTOM" else self.custom_system_prompt
+        else:
+            return ""
     
     def stop_generation(self):
         """Zatrzymuje generowanie odpowiedzi (placeholder)"""

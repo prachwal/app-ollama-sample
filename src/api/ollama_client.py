@@ -36,7 +36,8 @@ def ask_ollama(
     prompt: str, 
     test_name: str = "", 
     output_file: Optional[str] = None, 
-    timeout: Optional[int] = None, 
+    timeout: Optional[int] = None,
+    system_prompt: Optional[str] = None,
     **model_options
 ) -> Optional[Dict[str, Any]]:
     """
@@ -48,6 +49,7 @@ def ask_ollama(
         test_name (str): Nazwa testu dla logowania
         output_file (str): Ścieżka do pliku wyników
         timeout (int): Timeout w sekundach
+        system_prompt (str): Opcjonalny prompt systemowy (persona/context)
         **model_options: Dodatkowe opcje dla modelu (temperature, top_p, etc.)
         
     Returns:
@@ -63,9 +65,15 @@ def ask_ollama(
     }
     options.update(model_options)
 
+    # Przygotuj prompt z system prompt jeśli podano
+    final_prompt = prompt
+    if system_prompt and system_prompt.strip():
+        # Dodaj system prompt na początku
+        final_prompt = f"{system_prompt.strip()}\n\nUser: {prompt}\n\nAssistant:"
+
     payload = {
         "model": model,
-        "prompt": prompt,
+        "prompt": final_prompt,
         "options": options
     }
     
@@ -79,6 +87,8 @@ def ask_ollama(
         result_header = f"\n{'='*80}\n"
         result_header += f"Test: {test_name}\n"
         result_header += f"Model: {model}\n"
+        if system_prompt and system_prompt.strip():
+            result_header += f"Tryb systemowy: {system_prompt[:100]}{'...' if len(system_prompt) > 100 else ''}\n"
         result_header += f"Pytanie: {prompt}\n"
         result_header += "Odpowiedź: "
         

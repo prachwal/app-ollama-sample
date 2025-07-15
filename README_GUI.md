@@ -32,10 +32,23 @@ python ollama_basic_chat_gui.py
 
 ### 💬 Czat
 - **Wybór modelu** z listy dostępnych
+- **🆕 Tryb systemowy (Persona)** - Predefiniowane role i własne prompty systemowe
 - **Interaktywny czat** z wybranymi modelami
 - **Historia rozmów** z kolorowaniem składni
 - **Zapisywanie czatów** do plików tekstowych
 - **Wczytywanie** wcześniejszych rozmów
+
+#### 🎭 Dostępne tryby systemowe:
+- **Standardowy** - Brak prompta systemowego
+- **Profesjonalny programista** - Ekspert programowania z najlepszymi praktykami
+- **Asystent naukowy** - Obiektywne, bazowane na faktach odpowiedzi
+- **Kreatywny pisarz** - Żywy język, metafory i storytelling
+- **Analityk biznesowy** - Strategiczne myślenie i rozwiązania biznesowe
+- **Nauczyciel** - Wyjaśnienia krok po kroku z przykładami
+- **Ekspert IT** - Architektura, bezpieczeństwo, wydajność
+- **Konsultant prawny** - Analiza prawna z zaznaczeniem limitów
+- **Psycholog** - Empatyczne wsparcie i przemyślane pytania
+- **Własny prompt** - Możliwość zdefiniowania własnej persona
 
 ### 🧪 Testy
 - **🆕 Wybór języka testów** - Polski/English dropdown
@@ -90,14 +103,49 @@ GEMINI_JUDGE_MODEL_NAME = "gemini-1.5-flash"
 - **Ctrl+Enter** - Wyślij wiadomość w czacie
 - **Escape** - Zamknij dialogi / Przerwij test
 - **F5** - Odśwież listę modeli
+- **📝 Edytuj** - Otwórz dialog edycji trybu systemowego
+- **🗑️ Reset** - Przywróć tryb standardowy
 
 ## 🔧 Najnowsze poprawki
+
+### ✅ v2.2 Tryby systemowe (Persona):
+- **🎭 Predefiniowane role** - 9 gotowych persona (programista, nauczyciel, pisarz, etc.)
+- **📝 Własne prompty** - Możliwość zdefiniowania własnego trybu systemowego
+- **🔄 Łatwa zmiana** - Dropdown z trybami + przyciski edycji/reset
+- **💾 Zapisywanie** - Własne prompty są zapamiętywane w sesji
+- **🎯 Kontekst rozmowy** - System prompt wpływa na wszystkie odpowiedzi modelu
 
 ### ✅ v2.1 Uspójnienie interfejsu:
 - **Usunięto duplikaty przycisków** - Wszystkie kontrolki testów tylko w zakładce "Testy"
 - **Synchronizacja stanu** - Przyciski działają konsekwentnie
 - **Improved stop functionality** - Możliwość przerwania testów w dowolnym momencie
 - **Better error handling** - Lepsze komunikaty błędów i statusu
+
+## 💡 Przykłady użycia trybów systemowych
+
+### 🧑‍💻 Programista
+```
+Tryb: Profesjonalny programista
+Pytanie: "Jak zoptymalizować ten kod Python?"
+Odpowiedź: Otrzymasz szczegółową analizę z najlepszymi praktykami, 
+przykładami kodu i wyjaśnieniami wydajności.
+```
+
+### 🎨 Kreatywny pisarz  
+```
+Tryb: Kreatywny pisarz
+Pytanie: "Opisz zachód słońca nad morzem"
+Odpowiedź: Otrzymasz poetycki, obrazowy opis z metaforami 
+i emocjonalnym językiem.
+```
+
+### 🎓 Nauczyciel
+```
+Tryb: Nauczyciel
+Pytanie: "Wyjaśnij kwantową fizykę"
+Odpowiedź: Otrzymasz wyjaśnienie krok po kroku, z prostymi przykładami
+i pytaniami kontrolnymi.
+```
 
 ## 🐛 Rozwiązywanie problemów
 
